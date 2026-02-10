@@ -1,116 +1,77 @@
 const { getStreamsFromAttachment, log } = global.utils;
-
 const mediaTypes = ["photo", "png", "animated_image", "video", "audio"];
+const VOICE_URL = "https://files.catbox.moe/j11iw3.mp3"; // optional voice note
 
 module.exports = {
-  config: {
-    name: "callad",
-    aliases: ["call", "called"],
-    version: "2.0",
-    author: "NTKhang | Edited by Akash",
-    countDown: 5,
-    role: 0,
-    category: "contacts admin",
-    description: {
-      en: "Send message or report directly to bot admin"
+    config: {
+        name: "call",
+        version: "2.1",
+        author: "亗🅼🅰ᥫᩣ🅼ᥫᩣ🆄🅽×͜×",
+        countDown: 5,
+        role: 0,
+        description: {
+            en: "Send message or feedback directly to admin"
+        },
+        category: "contacts admin",
+        guide: {
+            en: "{pn} <message>"
+        }
     },
-    guide: {
-      en: "{pn} <your message>"
+
+    langs: {
+        en: {
+            missingMessage: "❌ Please enter the message you want to send to admin",
+            sendByGroup: "\n- Sent from group: %1\n- Thread ID: %2",
+            sendByUser: "\n- Sent from user",
+            content: "\n\nContent:\n─────────────────\n%1\n─────────────────\nReply this message to send message to user",
+            success: "✅ Your message sent to admin successfully!",
+            noAdmin: "❌ Bot has no admin at the moment"
+        }
+    },
+
+    onStart: async function({ args, message, event, usersData, threadsData, api, commandName, getLang }) {
+        const { senderID, threadID, isGroup } = event;
+
+        // 1️⃣ check message content
+        if (!args[0]) return message.reply(getLang("missingMessage"));
+
+        // 2️⃣ Set your UID as admin
+        const adminBot = ["61583138223543"]; // ← তোমার UID
+
+        // 3️⃣ get sender name
+        const senderName = await usersData.getName(senderID);
+
+        // 4️⃣ build message body
+        const msg = "==📨 CALL ADMIN 📨=="
+            + `\n- User Name: ${senderName}`
+            + `\n- User ID: ${senderID}`
+            + (isGroup ? getLang("sendByGroup", (await threadsData.get(threadID)).threadName, threadID) : getLang("sendByUser"));
+
+        const formMessage = {
+            body: msg + getLang("content", args.join(" ")),
+            mentions: [{ id: senderID, tag: senderName }],
+            attachment: await getStreamsFromAttachment(
+                [...event.attachments, ...(event.messageReply?.attachments || [])]
+                    .filter(item => mediaTypes.includes(item.type))
+            )
+        };
+
+        // 5️⃣ Send message to each admin UID
+        for (const uid of adminBot) {
+            try {
+                // Send text + optional voice note
+                await api.sendMessage(
+                    { ...formMessage, attachment: [...(formMessage.attachment || []), VOICE_URL] },
+                    uid
+                );
+            } catch (err) {
+                console.log("❌ Failed to send message to admin:", uid, err);
+                // fallback: send to group thread if inbox fails
+                await api.sendMessage(formMessage, threadID);
+            }
+        }
+
+        // 6️⃣ confirmation
+        return message.reply(`✅ Your message was sent successfully to admin! <@${adminBot[0]}>`);
     }
-  },
-
-  langs: {
-    en: {
-      missingMessage: "❗ Please write a message to send",
-      noAdmin: "⚠️ No admin found",
-      sentFromGroup: "\n👥 Group: %1\n🧵 Thread ID: %2",
-      sentFromUser: "\n👤 Sent from private chat",
-
-      userContent:
-        "\n\n📩 Message:\n%1\n\n↩️ Reply to respond",
-
-      success:
-        "✅ Message Sent\n\n📨 Sent to %1 admin(s)",
-
-      failed:
-        "❌ Failed to send message to %1 admin(s)",
-
-      adminReply:
-        "📍 Admin Reply\n\n👤 %1:\n%2\n\n↩️ Reply to continue",
-
-      userFeedback:
-        "📝 User Feedback\n\n👤 %1\n🆔 %2%3\n\n📩 Message:\n%4",
-
-      replySuccess: "✅ Reply sent successfully"
-    }
-  },
-
-  onStart: async function ({
-    args, message, event, usersData, threadsData, api, commandName, getLang
-  }) {
-    if (!args[0])
-      return message.reply(getLang("missingMessage"));
-
-    const { senderID, threadID, isGroup } = event;
-    const adminBot = global.GoatBot.config.adminBot;
-    if (!adminBot.length)
-      return message.reply(getLang("noAdmin"));
-
-    const senderName = await usersData.getName(senderID);
-
-    let body =
-      "📞 CALL ADMIN\n\n" +
-      `👤 User: ${senderName}\n` +
-      `🆔 ID: ${senderID}`;
-
-    body += isGroup
-      ? getLang("sentFromGroup", (await threadsData.get(threadID)).threadName, threadID)
-      : getLang("sentFromUser");
-
-    body += getLang("userContent", args.join(" "));
-
-    const formMessage = {
-      body,
-      mentions: [{ id: senderID, tag: senderName }],
-      attachment: await getStreamsFromAttachment(
-        [...event.attachments, ...(event.messageReply?.attachments || [])]
-          .filter(item => mediaTypes.includes(item.type))
-      )
-    };
-
-    let success = 0;
-
-    for (const uid of adminBot) {
-      try {
-        const info = await api.sendMessage(formMessage, uid);
-        success++;
-        global.GoatBot.onReply.set(info.messageID, {
-          commandName,
-          type: "userCallAdmin",
-          threadID,
-          messageIDSender: event.messageID
-        });
-      } catch (e) {
-        log.err("CALL ADMIN", e);
-      }
-    }
-
-    return message.reply(getLang("success", success));
-  },
-
-  onReply: async function ({
-    args, event, api, message, Reply, usersData, commandName, getLang
-  }) {
-    const senderName = await usersData.getName(event.senderID);
-
-    if (Reply.type === "userCallAdmin") {
-      const body = getLang("adminReply", senderName, args.join(" "));
-      api.sendMessage(
-        { body },
-        Reply.threadID,
-        () => message.reply(getLang("replySuccess")),
-        Reply.messageIDSender
-      );
-    }
-  }
 };
