@@ -1,84 +1,63 @@
 const axios = require("axios");
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
-
-// Renz API JSON
-const noobcore = "https://raw.githubusercontent.com/noobcore404/NC-STORE/main/NCApiUrl.json";
-
-async function getRenzApi() {
-  const res = await axios.get(noobcore, { timeout: 10000 });
-  if (!res.data?.renz) throw new Error("Renz API not found in JSON");
-  return res.data.renz;
-}
 
 module.exports = {
   config: {
     name: "edit",
-    aliases: ["nanobanana", "gptimage"],
     version: "1.0",
-    author: "rX x AKASH",
+    author: "Saimx69x | API Renz",
     countDown: 5,
     role: 0,
-    shortDescription: "Generate or edit images using text prompts",
-    category: "image",
-    guide: "{pn} <prompt> | Reply to an image with your prompt"
+    shortDescription: "Edit image using FluxKontext API",
+    longDescription: "Edit an uploaded image based on your prompt using FluxKontext API.",
+    category: "ai-image-edit",
+    guide: "{p}edit [prompt] (reply to image)"
   },
 
-  onStart: async function ({ api, event, args }) {
-    const { threadID, messageID, messageReply } = event;
-    const prompt = args.join(" ").trim();
+  onStart: async function ({ api, event, args, message }) {
+    const prompt = args.join(" ");
+    const repliedImage = event.messageReply?.attachments?.[0];
 
-    if (!prompt) {
-      return api.sendMessage(
-        "❌ Pʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ᴀ ᴘʀᴏᴍᴘᴛ.\n\nExamples:\n!gptgen a cyberpunk city\n!gptgen make me anime (reply to an image)",
-        threadID,
-        messageID
+    if (!repliedImage || repliedImage.type !== "photo") {
+      return message.reply(
+        "⚠️ Please reply to a photo **and** provide a prompt to edit it.\nExample: /edit Make it cartoon style"
       );
     }
 
-    const loadingMsg = await api.sendMessage("⏳ Pʀᴏᴄᴇssɪɴɢ ʏᴏᴜʀ ɪᴍᴀɢᴇ...", threadID);
+    if (!prompt) {
+      return message.reply(
+        "⚠️ Please provide a prompt to edit the image.\nExample: /edit Make it cartoon style"
+      );
+    }
 
-    const imgPath = path.join(__dirname, "cache", `${Date.now()}_gptgen.png`);
+    const processingMsg = await message.reply("⏳ Processing your image...");
+
+    const imgPath = path.join(__dirname, "cache", `${Date.now()}_edit.jpg`);
 
     try {
-      const BASE_URL = await getRenzApi();
-      let apiURL = `${BASE_URL}/api/gptimage?prompt=${encodeURIComponent(prompt)}`;
+      const imgURL = repliedImage.url;
+      const apiURL = `https://dev.oculux.xyz/api/fluxkontext?prompt=${encodeURIComponent(prompt)}&ref=${encodeURIComponent(imgURL)}`;
+      
+      const res = await axios.get(apiURL, { responseType: "arraybuffer" });
 
-      if (messageReply?.attachments?.[0]?.type === "photo") {
-        const repliedImage = messageReply.attachments[0];
-        apiURL += `&ref=${encodeURIComponent(repliedImage.url)}`;
-        if (repliedImage.width && repliedImage.height) {
-          apiURL += `&width=${repliedImage.width}&height=${repliedImage.height}`;
-        }
-      } else {
-        apiURL += `&width=512&height=512`;
-      }
+      await fs.ensureDir(path.dirname(imgPath));
+      await fs.writeFile(imgPath, Buffer.from(res.data, "binary"));
 
-      const res = await axios.get(apiURL, {
-        responseType: "arraybuffer",
-        timeout: 180000
+      await api.unsendMessage(processingMsg.messageID);
+      message.reply({
+        body: `✅ Edited image for: "${prompt}"`,
+        attachment: fs.createReadStream(imgPath)
       });
 
-      fs.mkdirSync(path.dirname(imgPath), { recursive: true });
-      fs.writeFileSync(imgPath, res.data);
-
-      await api.unsendMessage(loadingMsg.messageID);
-
-      await api.sendMessage(
-        {
-          body: messageReply?.attachments?.[0]
-            ? `🖌 Image edited successfully.\nPrompt: ${prompt}`
-            : `🖼 Image generated successfully.\nPrompt: ${prompt}`,
-          attachment: fs.createReadStream(imgPath)
-        },
-        threadID,
-        () => fs.unlinkSync(imgPath)
-      );
-
     } catch (err) {
-      console.error("GPTGEN Error:", err?.response?.data || err.message);
-      await api.unsendMessage(loadingMsg.messageID);
-      api.sendMessage("❌ Fᴀɪʟᴇᴅ ᴛᴏ ᴘʀᴏᴄᴇss ɪᴍᴀɢᴇ. Pʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.", threadID);
+      console.error("EDIT Error:", err);
+      await api.unsendMessage(processingMsg.messageID);
+      message.reply("❌ Failed to edit image. Please try again later.");
+    } finally {
+      if (fs.existsSync(imgPath)) {
+        await fs.remove(imgPath);
+      }
     }
   }
 };
