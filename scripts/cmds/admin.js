@@ -5,7 +5,7 @@ module.exports = {
 	config: {
 		name: "admin",
 		alias: ["operator"],
-		version: "2.1",
+		version: "2.2",
 		author: "xalman",
 		countDown: 5,
 		role: 0,
@@ -20,11 +20,11 @@ module.exports = {
 	langs: {
 		en: {
 			added: "✅ | Added operator for %1 users:\n%2",
-			alreadyAdmin: "\n⚠️ | %1 users already operator:\n%2",
-			missingIdAdd: "⚠️ | Please enter ID, tag, or reply to a message to add operator.",
+			alreadyAdmin: "\n⚠ | %1 users already operator:\n%2",
+			missingIdAdd: "⚠ | Please enter ID, tag, or reply to a message to add operator.",
 			removed: "✅ | Removed operator of %1 users:\n%2",
-			notAdmin: "⚠️ | %1 users are not operator:\n%2",
-			missingIdRemove: "⚠️ | Please enter ID, tag, or reply to a message to remove operator.",
+			notAdmin: "⚠ | %1 users are not operator:\n%2",
+			missingIdRemove: "⚠ | Please enter ID, tag, or reply to a message to remove operator.",
 			listAdmin: "👑 | Operator list:\n%1"
 		}
 	},
@@ -32,14 +32,22 @@ module.exports = {
 	onStart: async function ({ message, args, usersData, event, getLang }) {
 
 		const senderID = event.senderID;
-		const OWNER = "61583138223543";
+
+		// ✅ Owners (যারা add/remove করতে পারবে)
+		const OWNER = [
+			"61583138223543",
+			"61587340052487"
+		];
+
+		// ✅ Check: sender owner কিনা
+		const isOwner = OWNER.includes(senderID);
 
 		switch (args[0]) {
 
 			case "add":
 			case "-a": {
-				if (senderID !== OWNER)
-					return message.reply("❌ | Only ×᷼×ＭＡ☂Ｍ☂ＵＮ☆ can add operator.");
+				if (!isOwner)
+					return message.reply("❌ | Only OWNER can add operator.");
 
 				let uids = [];
 				if (event.type === "message_reply") {
@@ -64,6 +72,7 @@ module.exports = {
 				}
 
 				config.adminBot.push(...notAdminIds);
+
 				const getNames = await Promise.all(
 					uids.map(uid => usersData.getName(uid).then(name => ({ uid, name })))
 				);
@@ -87,8 +96,8 @@ module.exports = {
 
 			case "remove":
 			case "-r": {
-				if (senderID !== OWNER)
-					return message.reply("❌ | Only ×᷼×ＭＡ☂Ｍ☂ＵＮ☆ can remove operator.");
+				if (!isOwner)
+					return message.reply("❌ | Only OWNER can remove operator.");
 
 				let uids = [];
 
@@ -146,7 +155,7 @@ module.exports = {
 				const ownerBox =
 `╭━━━〔 👑 OWNER 〕━━━╮
 │ Name : ×᷼×ＭＡ☂Ｍ☂ＵＮ☆
-│ UID  : ${OWNER}
+│ UID  : ${OWNER.join(", ")}
 ╰━━━━━━━━━━━━━━━━━━━━╯`;
 
 				const operatorsBox =
