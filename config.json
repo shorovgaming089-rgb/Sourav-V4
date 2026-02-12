@@ -9,7 +9,7 @@
     "intervalGetNewCookie": 1440,
     "notes": "Automatically retrieves new cookies every x minutes. Recommended: 1440 (1 day)."
   },
-  "antiInbox": true,
+  "antiInbox": false,
   "language": "en",
   "notesLanguage": "change language using ISO 639-1 code",
   "nickNameBot": "♡┋ 𝙋𝙊𝙊𝙆𝙄𝙀 ᥫ᭡🎀🙂",
@@ -20,20 +20,20 @@
   },
   "adminBot": [
     "61583138223543",
-    "100074311121247",
-    "61587340052487"
+    "61587340052487",
+    "100074311121247"
   ],
   "reactUnsend": {
     "enable": true,
     "onlyAdmin": true,
-    "emojis": ["😦", "😡"],
+    "emojis": ["😡", "😦"],
     "notes": "If enable = true, bot will unsend any message reacted with these emojis. If onlyAdmin = true, only adminBot IDs can trigger it."
   },
   "whiteListMode": {
     "enable": false,
     "whiteListIds": [
-      "61583138223543",
-      "100074311121247"
+      "4095426180772827",
+      "4095426180772827"
     ],
     "notes": "If enabled, only IDs in whiteListIds can use the bot."
   },
@@ -44,7 +44,7 @@
   },
   "database": {
     "type": "sqlite",
-    "uriMongodb": "Database",
+    "uriMongodb": "",
     "autoSyncWhenStart": false,
     "autoRefreshThreadInfoFirstTime": true,
     "notes": "Recommended using 'mongodb' or 'sqlite'."
@@ -151,4 +151,4 @@
     "autoReconnect": false,
     "notes": "Docs: https://github.com/ntkhang03/fb-chat-api/blob/master/DOCS.md#apisetoptionsoptions"
   }
-}
+  }
