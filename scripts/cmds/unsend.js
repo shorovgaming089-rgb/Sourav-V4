@@ -2,33 +2,37 @@ module.exports = {
 	config: {
 		name: "unsend",
 		aliases: ["u", "uns", "r"],
-		version: "1.2",
-		author: "NTKhang",
+		version: "1.6",
+		author: "NTKhang | Aphelion",
 		countDown: 5,
 		role: 0,
 		description: {
-			vi: "Gỡ tin nhắn của bot",
-			en: "Unsend bot's message"
+			en: "Unsend bot message"
 		},
-		category: "box chat",
-		guide: {
-			vi: "reply tin nhắn muốn gỡ của bot và gọi lệnh {pn}",
-			en: "reply the message you want to unsend and call the command {pn}"
-		}
+		category: "box chat"
 	},
 
-	langs: {
-		vi: {
-			syntaxError: "Vui lòng reply tin nhắn muốn gỡ của bot"
-		},
-		en: {
-			syntaxError: "Please reply the message you want to unsend"
-		}
-	},
+	onStart: async function ({ message, event, api }) {
+		if (!event.messageReply || event.messageReply.senderID !== api.getCurrentUserID())
+			return message.reply("Please reply to a bot message");
 
-	onStart: async function ({ message, event, api, getLang }) {
-		if (!event.messageReply || event.messageReply.senderID != api.getCurrentUserID())
-			return message.reply(getLang("syntaxError"));
 		message.unsend(event.messageReply.messageID);
+	},
+
+	// NO-PREFIX HANDLER
+	onChat: async function ({ event, message, api }) {
+		if (!event.body || !event.messageReply) return;
+
+		const text = event.body.toLowerCase().trim();
+
+		// short silent keywords
+		const silent = ["u", "uns", "r", "unsend"];
+
+		if (
+			silent.includes(text) &&
+			event.messageReply.senderID === api.getCurrentUserID()
+		) {
+			message.unsend(event.messageReply.messageID);
+		}
 	}
 };

@@ -1,4 +1,4 @@
-const { getPrboxx } = global.utils;
+const { getPrefix } = global.utils;
 
 module.exports = {
 	config: {

@@ -1,78 +1,96 @@
-const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
+const axios = require('axios');
+const yts = require("yt-search");
 
-module.exports = {
-config: {
-name: "video",
-version: "2.2.0",
-author: "milon",
-countDown: 5,
-role: 0,
-shortDescription: "Get YouTube video by name (No Prefix)",
-longDescription: "Search and download YouTube videos by name without any prefix",
-category: "media",
-guide: {
-en: "video <name>"
-}
-},
-
-// এই ফাংশনটি প্রিফিক্স ছাড়া কাজ করতে সাহায্য করবে
-onChat: async function ({ api, event, message }) {
-const { body, threadID, messageID } = event;
-if (!body || !body.toLowerCase().startsWith("video ")) return;
-
-const args = body.split(/\s+/);
-args.shift(); // 'video' লেখাটি বাদ দিয়ে বাকিটা কুয়েরি হিসেবে নিবে
-const query = args.join(" ");
-
-if (!query) return;
-
-let loadingMsgID = null;
-
-try {
-const loading = await api.sendMessage(`🔎 Searching for "${query}"...\n⏳ Please wait...`, threadID);
-loadingMsgID = loading.messageID;
-
-const searchRes = await axios.get(`https://betadash-search-download.vercel.app/yt?search=${encodeURIComponent(query)}`);
-const video = searchRes.data[0];
-
-if (!video || !video.url) throw new Error("No video found.");
-
-try { await api.unsendMessage(loadingMsgID); } catch(e) {}
-
-const downloading = await api.sendMessage(`🎬 Found: ${video.title}\n⬇️ Downloading now...`, threadID);
-loadingMsgID = downloading.messageID;
-
-const dlRes = await axios.get(`https://yt-api-imran.vercel.app/api?url=${video.url}`);
-const downloadUrl = dlRes.data.downloadUrl;
-if (!downloadUrl) throw new Error("No download link received.");
-
-const videoBuffer = (await axios.get(downloadUrl, { responseType: 'arraybuffer' })).data;
-const cachePath = path.join(__dirname, "cache");
-await fs.ensureDir(cachePath);
-const filePath = path.join(cachePath, `video_${Date.now()}.mp4`);
-await fs.writeFile(filePath, videoBuffer);
-
-const finalMessage = {
-body: `━━━━━━━━━━━━━━━━━━\n🎬 𝗧𝗶𝘁𝗹𝗲: ${video.title}\n⏱️ 𝗗𝘂𝗿𝗮𝘁𝗶𝗼𝗻: ${video.time}\n━━━━━━━━━━━━━━━━━━\n\n✅ Your video is ready!`,
-attachment: fs.createReadStream(filePath)
+const baseApiUrl = async () => {
+    const base = await axios.get(
+        `https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`
+    );
+    return base.data.api;
 };
 
-await api.sendMessage(finalMessage, threadID, async () => {
-if (fs.existsSync(filePath)) await fs.unlinkSync(filePath);
-}, messageID);
+(async () => {
+    global.apis = {
+        diptoApi: await baseApiUrl()
+    };
+})();
 
-if (loadingMsgID) await api.unsendMessage(loadingMsgID);
-
-} catch (err) {
-if (loadingMsgID) try { await api.unsendMessage(loadingMsgID); } catch (e) {}
-api.sendMessage(`❌ Error: ${err.message || "Something went wrong!"}`, threadID, messageID);
+async function getStreamFromURL(url, pathName) {
+    try {
+        const response = await axios.get(url, {
+            responseType: "stream"
+        });
+        response.data.path = pathName;
+        return response.data;
+    } catch (err) {
+        throw err;
+    }
 }
-},
 
-// এটি খালি রাখা হয়েছে যাতে help লিস্টে কমান্ডটি দেখায়
-onStart: async function ({ api, event }) {
-api.sendMessage("অনুগ্রহ করে 'video <নাম>' এভাবে লিখে ভিডিও সার্চ করুন (কোনো প্রিফিক্স লাগবে না)।", event.threadID, event.messageID);
+global.utils = {
+    ...global.utils,
+    getStreamFromURL: global.utils.getStreamFromURL || getStreamFromURL
+};
+
+function getVideoID(url) {
+    const checkurl = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
+    const match = url.match(checkurl);
+    return match ? match[1] : null;
 }
+
+const config = {
+    name: "video",
+    author: "Mesbah Saxx",
+    credits: "Mesbah Saxx",
+    version: "1.0.0",
+    role: 0,
+    hasPermssion: 0,
+    description: "",
+    usePrefix: true,
+    prfix: true,
+    category: "media",
+    commandCategory: "media",
+    cooldowns: 5,
+    countDown: 5,
+};
+
+async function onStart({ api, args, event }) {
+    try {
+        let videoID,w;
+        const url = args[0];
+
+        if (url && (url.includes("youtube.com") || url.includes("youtu.be"))) {
+            videoID = getVideoID(url);
+            if (!videoID) {
+                await api.sendMessage("Invalid YouTube URL.", event.threadID, event.messageID);
+            }
+        } else {
+            const songName = args.join(' ');
+             w = await api.sendMessage(`Searching song "${songName}"... `, event.threadID);
+            const r = await yts(songName);
+            const videos = r.videos.slice(0, 50);
+
+            const videoData = videos[Math.floor(Math.random() * videos.length)];
+            videoID = videoData.videoId;
+        }
+
+        const { data: { title, quality, downloadLink } } = await axios.get(`${global.apis.diptoApi}/ytDl3?link=${videoID}&format=mp4`);
+
+        api.unsendMessage(w.messageID);
+        
+        const o = '.php';
+        const shortenedLink = (await axios.get(`https://tinyurl.com/api-create${o}?url=${encodeURIComponent(downloadLink)}`)).data;
+
+        await api.sendMessage({
+            body: `🔖 - 𝚃𝚒𝚝𝚕𝚎: ${title}\n✨ - 𝚀𝚞𝚊𝚕𝚒𝚝𝚢: ${quality}\n\n📥 - 𝙳𝚘𝚠𝚗𝚕𝚘𝚊𝚍 𝙻𝚒𝚗𝚔: ${shortenedLink}`,
+            attachment: await global.utils.getStreamFromURL(downloadLink, title+'.mp4')
+        }, event.threadID, event.messageID);
+    } catch (e) {
+        api.sendMessage(e.message || "An error occurred.", event.threadID, event.messageID);
+    }
+}
+
+module.exports = {
+    config,
+    onStart,
+    run: onStart
 };

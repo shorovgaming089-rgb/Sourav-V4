@@ -1,5 +1,6 @@
 const Canvas = require("canvas");
 const { uploadZippyshare } = global.utils;
+const axios = require("axios"); // Add axios import
 
 const defaultFontName = "BeVietnamPro-SemiBold";
 const defaultPathFontName = `${__dirname}/assets/font/BeVietnamPro-SemiBold.ttf`;
@@ -29,7 +30,7 @@ module.exports = {
 			vi: "Xem level của bạn hoặc người được tag. Có thể tag nhiều người",
 			en: "View your level or the level of the tagged person. You can tag many people"
 		},
-		category: "game",
+		category: "rank",
 		guide: {
 			vi: "   {pn} [để trống | @tags]",
 			en: "   {pn} [empty | @tags]"
@@ -84,6 +85,26 @@ const defaultDesignCard = {
 	text_color: "#000000"
 };
 
+// SAME FUNCTION as in other commands
+const getAvatar = async (userID) => {
+	try {
+		const avatarURL = `https://graph.facebook.com/${userID}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+		const finalAvatarURL = avatarURL + (avatarURL.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+		
+		const response = await axios.get(finalAvatarURL, { 
+			responseType: "arraybuffer",
+			timeout: 15000,
+			headers: { "User-Agent": "Mozilla/5.0" }
+		});
+		
+		return `data:image/jpeg;base64,${Buffer.from(response.data).toString('base64')}`;
+	} catch (error) {
+		console.error(`Error fetching avatar for ${userID}:`, error.message);
+		// Return a fallback URL
+		return `https://graph.facebook.com/${userID}/picture?width=720&height=720`;
+	}
+};
+
 async function makeRankCard(userID, usersData, threadsData, threadID, deltaNext, api = global.GoatBot.fcaApi) {
 	const { exp } = await usersData.get(userID);
 	const levelUser = expToLevel(exp, deltaNext);
@@ -102,7 +123,7 @@ async function makeRankCard(userID, usersData, threadsData, threadID, deltaNext,
 		name: allUser[rank - 1].name,
 		rank: `#${rank}/${allUser.length}`,
 		level: levelUser,
-		avatar: await usersData.getAvatarUrl(userID)
+		avatar: await getAvatar(userID) // Use the same function here
 	};
 
 	const configRankCard = {
@@ -968,4 +989,4 @@ function checkFormatColor(color, enableUrl = true) {
 		!Array.isArray(color)
 	)
 		throw new Error(`The color format must be a hex, rgb, rgba ${enableUrl ? ", url image" : ""} or an array of colors`);
-}
+	}

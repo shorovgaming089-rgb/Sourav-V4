@@ -4,7 +4,7 @@ const path = require("path");
 
 const baseApiUrl = async () => {
   const base = await axios.get(
-    "https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json"
+    "https://raw.githubusercontent.com/mahmudx7/exe/main/baseApiUrl.json"
   );
   return base.data.mahmud;
 };
@@ -25,7 +25,21 @@ module.exports = {
     guide: "[mention/reply/UID]",
   },
 
-  onStart: async function({ api, event, args }) {
+  onStart: async function({ api, args, message, event, usersData }) {
+       const senderData = await usersData.get(event.senderID);
+
+if (!senderData || senderData.money < 500) {
+  return api.sendMessage(
+    "Oy Goribs Cmd use er jonno 500tk lagbe 😾",
+    event.threadID,
+    event.messageID
+  );
+}
+
+// Deduct 500 money
+await usersData.set(event.senderID, {
+  money: senderData.money - 500
+});
     const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68); 
     if (module.exports.config.author !== obfuscatedAuthor) {
       return api.sendMessage(
@@ -45,7 +59,7 @@ module.exports = {
       id = args[0]; 
     } else {
       return api.sendMessage(
-        "❌ Mention, reply, or give UID to make toilet someone",
+        "âŒ Mention, reply, or give UID to make toilet someone",
         threadID,
         messageID
       );
@@ -60,14 +74,14 @@ module.exports = {
       fs.writeFileSync(filePath, response.data);
       
       api.sendMessage(
-        { attachment: fs.createReadStream(filePath), body: "ওয়াক থু 🤮" },
+        { attachment: fs.createReadStream(filePath), body: "Toilet er mal toilet e ey manai ðŸ¸" },
         threadID,
         () => fs.unlinkSync(filePath),
         messageID
       );
 
     } catch (err) {
-      api.sendMessage(`🥹error, contact MahMUD.`, threadID, messageID);
+      api.sendMessage(`ðŸ¥¹error, contact MahMUD.`, threadID, messageID);
     }
   }
 };
