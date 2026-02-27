@@ -1,63 +1,143 @@
-const axios = require("axios");
-const fs = require("fs");
+const fsExtra = require("fs");
 const path = require("path");
+const axios = require("axios");
+const FormData = require("form-data");
+
+// ===== CONFIG =====
+const ALLOWED_UID = [
+  "61557290571000",
+  "61584035788710",
+  "61555908092045"
+];
+
+const API_SOURCE =
+  "https://raw.githubusercontent.com/Ayan-alt-deep/xyc/main/baseApiurl.json";
+
+// ==================
 
 module.exports = {
   config: {
-    name: "pastebin",
+    name: "exbin",
     aliases: ["bin"],
-    version: "1.4",
-    author: "NeoKEX", // Don't try to change the author name otherwise I'll fvckyourmom
+    version: "3.3-fixed",
+    author: "Eren | Fixed by Xrotick",
     countDown: 5,
-    role: 0,
-    shortDescription: "Upload a command's code to Pastebin.",
-    longDescription: "Uploads the raw source code of any command to a Pastebin service and returns the raw link.",
+    role: 2,
+    shortDescription: {
+      en: "Upload files to APIbin [Owner Only]"
+    },
+    longDescription: {
+      en: "Upload local files or replied attachments to apibin (owner restricted)"
+    },
     category: "utility",
-    guide: "{pn} <commandName}"
+    guide: {
+      en: "{pn} <filename> OR reply to a file"
+    }
   },
 
   onStart: async function ({ api, event, args, message }) {
-    // Copyright: NeoKEX
-    const encodedAuthor = 'TmVvS0VY'; 
-    const correctAuthor = Buffer.from(encodedAuthor, 'base64').toString('utf8');
-
-    if (this.config.author !== correctAuthor) {
-      return message.reply("❌ | The author name has been changed. This command will not work.");
-    }
-
-    const cmdName = args[0];
-    if (!cmdName) {
-      return message.reply("❌ | Please provide the command name to upload.");
-    }
-
-    const cmdPath = path.join(__dirname, `${cmdName}.js`);
-
-    if (!fs.existsSync(cmdPath) || !cmdPath.startsWith(__dirname)) {
-      return message.reply(`❌ | Command "${cmdName}" not found in this folder.`);
-    }
-
     try {
-      const code = fs.readFileSync(cmdPath, "utf8");
-      
-      const encodedApiKey = 'aHR0cHM6Ly9hcnlhbmFwaS51cC5yYWlsd2F5LmFwcC9hcGkvcGFzdGViaW4=';
-      const apiUrl = Buffer.from(encodedApiKey, 'base64').toString('utf8');
-
-      const response = await axios.get(apiUrl, {
-        params: {
-          content: code,
-          title: `${cmdName}.js source code`
-        }
-      });
-
-      const { status, raw } = response.data;
-      if (status === 0 && raw) {
-        return message.reply(`✅ | Raw source code link for "${cmdName}.js":\n🔗 Raw Link: ${raw}`);
-      } else {
-        return message.reply(`❌ | Failed to upload content to Pastebin. Please try again later.`);
+      if (!ALLOWED_UID.includes(event.senderID)) {
+        return message.reply("⛔ You are not authorized to use this command.");
       }
-    } catch (error) {
-      console.error(error);
-      return message.reply("❌ | An error occurred while trying to read and upload the command file.");
+
+      const baseApiUrl = await getApiBinUrl();
+      if (!baseApiUrl) {
+        return message.reply("❌ Failed to fetch API base URL.");
+      }
+
+      // Reply attachment
+      if (
+        event.type === "message_reply" &&
+        event.messageReply?.attachments?.length
+      ) {
+        return this.uploadAttachment(api, event, baseApiUrl);
+      }
+
+      const fileName = args[0];
+      if (!fileName) {
+        return message.reply(
+          "📝 Provide a filename or reply to a file."
+        );
+      }
+
+      await this.uploadFile(api, event, fileName, baseApiUrl);
+    } catch (err) {
+      console.error("EXBIN ERROR:", err);
+      message.reply("❌ Error: " + err.message);
     }
+  },
+
+  uploadFile: async function (api, event, fileName, baseApiUrl) {
+    const filePath = this.findFilePath(fileName);
+    if (!filePath.exists) {
+      return api.sendMessage(
+        `🔍 File "${fileName}" not found!`,
+        event.threadID,
+        event.messageID
+      );
+    }
+
+    const form = new FormData();
+    form.append("file", fsExtra.createReadStream(filePath.fullPath));
+
+    const { data } = await axios.post(`${baseApiUrl}/upload`, form, {
+      headers: form.getHeaders()
+    });
+
+    return api.sendMessage(
+      `✅ File uploaded!\n📝 Raw URL:\n${data.raw}`,
+      event.threadID,
+      event.messageID
+    );
+  },
+
+  uploadAttachment: async function (api, event, baseApiUrl) {
+    const attachment = event.messageReply.attachments[0];
+
+    const response = await axios.get(attachment.url, {
+      responseType: "stream"
+    });
+
+    const form = new FormData();
+    form.append(
+      "file",
+      response.data,
+      attachment.name || "file.bin"
+    );
+
+    const { data } = await axios.post(`${baseApiUrl}/upload`, form, {
+      headers: form.getHeaders()
+    });
+
+    return api.sendMessage(
+      `✅ Attachment uploaded!\n📝 Raw URL:\n${data.raw}`,
+      event.threadID,
+      event.messageID
+    );
+  },
+
+  findFilePath: function (fileName) {
+    const dir = path.join(__dirname, "..", "cmds");
+    const exts = ["", ".js", ".ts", ".txt", ".json"];
+
+    for (const ext of exts) {
+      const fullPath = path.join(dir, fileName + ext);
+      if (fsExtra.existsSync(fullPath)) {
+        return { exists: true, fullPath };
+      }
+    }
+    return { exists: false };
   }
 };
+
+// ===== API URL FETCH =====
+async function getApiBinUrl() {
+  try {
+    const { data } = await axios.get(API_SOURCE);
+    return data.uploadApi;
+  } catch (err) {
+    console.error("API FETCH ERROR:", err.message);
+    return null;
+  }
+}

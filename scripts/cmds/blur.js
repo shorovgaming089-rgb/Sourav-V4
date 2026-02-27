@@ -1,57 +1,37 @@
-const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-
 module.exports = {
   config: {
     name: "blur",
+    aliases: [],
     version: "1.0",
-    author: "MOHAMMAD AKASH",
-    countDown: 10,
-    role: 0,
-    shortDescription: {
-      en: "Apply blur effect to profile picture"
-    },
-    description: {
-      en: "Adds a blur effect to your or mentioned user's profile picture"
-    },
-    category: "fun",
-    guide: {
-      en: "{p}blur [@mention or reply]\nIf no mention or reply, uses your profile picture."
-    }
+    author: "Ayan Nzt",
+    description: "Blur an image with optional level",
+    usage: "[level] (reply image)",
+    category: "image"
   },
+  onStart: async function ({ api, event, args }) {
+    const axios = require("axios");
+    const fs = require("fs-extra");
 
-  onStart: async function ({ api, event, message }) {
-    const { senderID, mentions, type, messageReply } = event;
+    if (!event.messageReply || !event.messageReply.attachments || event.messageReply.attachments.length === 0)
+      return api.sendMessage("⚠️ Reply to an image.", event.threadID, event.messageID);
 
-    // Determine user ID for avatar
-    let uid;
-    if (Object.keys(mentions).length > 0) {
-      uid = Object.keys(mentions)[0];
-    } else if (type === "message_reply") {
-      uid = messageReply.senderID;
-    } else {
-      uid = senderID;
-    }
-
-    const avatarURL = `https://graph.facebook.com/${uid}/picture?width=512&height=512&access_token=350685531728|62f8ce9f74b12f84c123cc23437a4a32`;
+    const url = event.messageReply.attachments[0].url;
+    const level = args[0] || 5; // default blur level = 5
+    const apiUrl = `https://mahis-global-api.up.railway.app/api/blur?url=${encodeURIComponent(url)}&level=${level}`;
+    const path = __dirname + `/cache/blur_${Date.now()}.png`;
 
     try {
-      const res = await axios.get(`https://api.popcat.xyz/v2/blur?image=${encodeURIComponent(avatarURL)}`, {
-        responseType: "arraybuffer"
-      });
+      const response = await axios.get(apiUrl, { responseType: "arraybuffer" });
+      fs.writeFileSync(path, Buffer.from(response.data, "binary"));
 
-      const filePath = path.join(__dirname, "cache", `blur_${uid}_${Date.now()}.png`);
-      fs.writeFileSync(filePath, res.data);
-
-      message.reply({
-        body: "🌫️ Here's your blurred image!",
-        attachment: fs.createReadStream(filePath)
-      }, () => fs.unlinkSync(filePath));
+      api.sendMessage({
+        body: `✅ Here is your blurred image (level ${level}).`,
+        attachment: fs.createReadStream(path)
+      }, event.threadID, () => fs.unlinkSync(path), event.messageID);
 
     } catch (err) {
       console.error(err);
-      message.reply("❌ | Failed to generate blurred image.");
+      api.sendMessage("❌ Failed to process image.", event.threadID, event.messageID);
     }
   }
 };

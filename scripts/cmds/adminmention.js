@@ -2,7 +2,7 @@ module.exports = {
   config: {
     name: "adminmention",
     version: "1.3.2",
-    author: "MOHAMMAD AKASH",
+    author: "MOHAMMAD AKASH + Customize By Sourav Ahmed",
     countDown: 0,
     role: 0,
     shortDescription: "Replies angrily when someone tags admins",
@@ -13,7 +13,7 @@ module.exports = {
   onStart: async function () {},
 
   onChat: async function ({ event, message }) {
-    const adminIDs = ["61583138223543", "61584842840632", "61583138223543"].map(String);
+    const adminIDs = ["100078049308655", "100090071683807", "100092480994957"].map(String);
 
     // Skip if sender is admin
     if (adminIDs.includes(String(event.senderID))) return;
@@ -26,7 +26,7 @@ module.exports = {
 
     // র‍্যান্ডম রাগী রিপ্লাই
     const REPLIES = [
-      " বস কে মেনশন দিলে তোর নানির খালি ঘর 😩🐸",
+      " সৌরভ বস-রে মেনশন দিস না বউ নিয়া চিপায় গেছে 😩🐸",
       "বস এক আবাল তুমারে ডাকতেছে 😂😏",
       " বুকাচুদা তুই মেনশন দিবি না আমার বস রে 🥹",
       "মেনশন দিছস আর বেচে যাবি? দারা বলতাছি 😠",
