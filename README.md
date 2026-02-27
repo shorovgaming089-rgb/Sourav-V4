@@ -1,8 +1,8 @@
-<img src="https://i.imgur.com/Wzz3wDu.jpeg" alt="banner">
-<h1 align="center"><img src="./dashboard/images/logo-non-bg.png" width="22px">   ✰𝗣𝗢𝗢𝗞𝗜𝗘☆𝘾𝙃𝘼𝙏☆𝘽𝙊𝙏✰𝗢𝗙𝗙𝗜𝗖𝗜𝗔𝗟✰🌐</h1>
+<img src="https://i.imgur.com/QmdwfGC.jpeg" alt="banner">
+<h1 align="center"><img src="./dashboard/images/logo-non-bg.png" width="22px">   𝗦𝗢𝗨𝗥𝗔𝗩 𝗠𝗘𝗦𝗦𝗘𝗡𝗚𝗘𝗥 𝗖𝗛𝗔𝗧 𝗕𝗢𝗧</h1>
 <!-- Github README -->
 
-<p align="center"><img src="https://img.shields.io/badge/I Am MAMUN from %20BANGLADESHI- NOOB PROGRAMMER-green?colorA=%23ff0000&colorB=%23017e40&style=flat-square">
+<p align="center"><img src="https://img.shields.io/badge/I Am Eren from %20BANGLADESHI- NOOB PROGRAMMER-green?colorA=%23ff0000&colorB=%23017e40&style=flat-square">
 
 </i></b></h3>
 <h3 align="center">
