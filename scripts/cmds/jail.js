@@ -163,4 +163,4 @@ async function generateThinBarsImage(avatarPath, name) {
   const wantedPath = path.join(__dirname, 'cache', `wanted_thin_${Date.now()}.png`);
   fs.writeFileSync(wantedPath, canvas.toBuffer());
   return wantedPath;
-}
+          }

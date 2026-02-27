@@ -1,119 +1,121 @@
+const { loadImage, createCanvas } = require("canvas");
 const fs = require("fs-extra");
 const axios = require("axios");
-const { loadImage, createCanvas } = require("canvas");
 
 module.exports = {
   config: {
     name: "hack",
-    version: "1.0.0",
-    author: "NAZRUL (Converted by Akash)",
-    countDown: 0,
-    role: 0,
-    shortDescription: "Fake FB hack generator 😅",
-    longDescription: "Creates a fake hacking style image using target profile photo and name.",
+    author: "Mostakim",
+    countDown: 5,
+    role: 2,
     category: "fun",
-    guide: {
-      en: "{pn} @mention বা reply দিয়ে ব্যবহার করো"
-    }
+    shortDescription: {
+      en: "Generates a 'hacking' image with the user's profile picture.",
+    },
   },
 
-  // ✏️ টেক্সট লাইন ভাঙার হেল্পার ফাংশন
-  wrapText(ctx, text, maxWidth) {
-    return new Promise(resolve => {
-      if (ctx.measureText(text).width < maxWidth) return resolve([text]);
+  wrapText: async (ctx, name, maxWidth) => {
+    return new Promise((resolve) => {
+      if (ctx.measureText(name).width < maxWidth) return resolve([name]);
       if (ctx.measureText("W").width > maxWidth) return resolve(null);
-
-      const words = text.split(" ");
+      const words = name.split(" ");
       const lines = [];
       let line = "";
-
       while (words.length > 0) {
         let split = false;
         while (ctx.measureText(words[0]).width >= maxWidth) {
           const temp = words[0];
           words[0] = temp.slice(0, -1);
-          if (split) {
-            words[1] = temp.slice(-1) + words[1];
-          } else {
+          if (split) words[1] = `${temp.slice(-1)}${words[1]}`;
+          else {
             split = true;
             words.splice(1, 0, temp.slice(-1));
           }
         }
-
-        if (ctx.measureText(line + words[0]).width < maxWidth) {
-          line += words.shift() + " ";
-        } else {
+        if (ctx.measureText(`${line}${words[0]}`).width < maxWidth)
+          line += `${words.shift()} `;
+        else {
           lines.push(line.trim());
           line = "";
         }
-
         if (words.length === 0) lines.push(line.trim());
       }
-
-      resolve(lines);
+      return resolve(lines);
     });
   },
 
-  // 🎯 মূল কমান্ড
-  onStart: async function ({ event, message, usersData }) {
-    try {
-      const mentionID = Object.keys(event.mentions)[0] || event.senderID;
-      const userName = await usersData.getName(mentionID);
+  onStart: async function ({ args, usersData, threadsData, api, event }) {
 
-      // ব্যাকগ্রাউন্ড লিংক (তুমি চাইলে নিজেও কাস্টম দিতে পারো)
-      const backgrounds = [
-        "https://drive.google.com/uc?id=1_S9eqbx8CxMMxUdOfATIDXwaKWMC-8ox&export=download"
-      ];
-      const bgLink = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+    // 🔧 FIX: get sender data
+    const senderData = await usersData.get(event.senderID);
 
-      // ক্যাশ ফোল্ডার তৈরি
-      const bgPath = __dirname + "/cache/hack_bg.png";
-      const avatarPath = __dirname + "/cache/hack_avatar.png";
-
-      // প্রোফাইল ছবি নামানো
-      const avatarData = (
-        await axios.get(
-          `https://graph.facebook.com/${mentionID}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
-          { responseType: "arraybuffer" }
-        )
-      ).data;
-      fs.writeFileSync(avatarPath, Buffer.from(avatarData, "utf-8"));
-
-      // ব্যাকগ্রাউন্ড নামানো
-      const bgData = (await axios.get(bgLink, { responseType: "arraybuffer" })).data;
-      fs.writeFileSync(bgPath, Buffer.from(bgData, "utf-8"));
-
-      // ক্যানভাসে আঁকা
-      const background = await loadImage(bgPath);
-      const avatar = await loadImage(avatarPath);
-      const canvas = createCanvas(background.width, background.height);
-      const ctx = canvas.getContext("2d");
-
-      ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
-      ctx.font = "400 23px Arial";
-      ctx.fillStyle = "#1878F3";
-      ctx.textAlign = "start";
-
-      const wrappedText = await this.wrapText(ctx, userName, 1160);
-      ctx.fillText(wrappedText.join("\n"), 136, 335);
-
-      ctx.beginPath();
-      ctx.drawImage(avatar, 57, 290, 66, 68);
-
-      const finalBuffer = canvas.toBuffer();
-      fs.writeFileSync(bgPath, finalBuffer);
-
-      await message.reply({
-        body: "😎 হ্যাক সম্পূর্ণ!",
-        attachment: fs.createReadStream(bgPath)
-      });
-
-      // ক্যাশ পরিষ্কার করা
-      fs.unlinkSync(bgPath);
-      fs.unlinkSync(avatarPath);
-    } catch (err) {
-      console.error(err);
-      message.reply("❌ কিছু ভুল হয়েছে!");
+    // 💰 Require 500 money
+    if (!senderData.money || senderData.money < 500) {
+      return api.sendMessage(
+        "Oy Goribs Cmd use er jonno 500tk labe ja tor kase nai 😾",
+        event.threadID,
+        event.messageID
+      );
     }
-  }
+
+    // Deduct 500 money
+    await usersData.set(event.senderID, {
+      money: senderData.money - 500
+    });
+
+    let pathImg = __dirname + "/cache/background.png";
+    let pathAvt1 = __dirname + "/cache/Avtmot.png";
+
+    var id = Object.keys(event.mentions)[0] || event.senderID;
+    var name = await api.getUserInfo(id);
+    name = name[id].name;
+
+    var background = [
+      "https://drive.google.com/uc?id=1RwJnJTzUmwOmP3N_mZzxtp63wbvt9bLZ"
+    ];
+    var rd = background[Math.floor(Math.random() * background.length)];
+
+    let getAvtmot = (
+      await axios.get(
+        `https://graph.facebook.com/${id}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`,
+        { responseType: "arraybuffer" }
+      )
+    ).data;
+
+    fs.writeFileSync(pathAvt1, Buffer.from(getAvtmot));
+    let getbackground = (
+      await axios.get(rd, { responseType: "arraybuffer" })
+    ).data;
+
+    fs.writeFileSync(pathImg, Buffer.from(getbackground));
+
+    let baseImage = await loadImage(pathImg);
+    let baseAvt1 = await loadImage(pathAvt1);
+    let canvas = createCanvas(baseImage.width, baseImage.height);
+    let ctx = canvas.getContext("2d");
+
+    ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+    ctx.font = "400 23px Arial";
+    ctx.fillStyle = "#1878F3";
+    ctx.textAlign = "start";
+
+    const lines = await this.wrapText(ctx, name, 1160);
+    ctx.fillText(lines.join("\n"), 200, 497);
+
+    ctx.drawImage(baseAvt1, 83, 437, 100, 101);
+
+    const imageBuffer = canvas.toBuffer();
+    fs.writeFileSync(pathImg, imageBuffer);
+    fs.removeSync(pathAvt1);
+
+    return api.sendMessage(
+      {
+        body: "✅ 𝙎𝙪𝙘𝙘𝙚𝙨𝙨𝙛𝙪𝙡𝙡𝙮 𝙃𝙖𝙘𝙠𝙚𝙙 𝙏𝙝𝙞𝙨 𝙐𝙨𝙚𝙧! My Lord, Please Check Your Inbox.",
+        attachment: fs.createReadStream(pathImg),
+      },
+      event.threadID,
+      () => fs.unlinkSync(pathImg),
+      event.messageID
+    );
+  },
 };
